@@ -18,10 +18,15 @@ class Jiggler : Form
 
     [DllImport("user32.dll")] static extern bool GetLastInputInfo(ref LASTINPUTINFO info);
     [DllImport("user32.dll")] static extern uint SendInput(uint n, INPUT[] inputs, int size);
+    [DllImport("user32.dll")] static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
+    [DllImport("user32.dll")] static extern bool SetProcessDPIAware();
     [DllImport("kernel32.dll")] static extern uint SetThreadExecutionState(uint flags);
 
     const uint ES_CONTINUOUS = 0x80000000, ES_SYSTEM_REQUIRED = 0x1, ES_DISPLAY_REQUIRED = 0x2;
-    const uint MOUSEEVENTF_MOVE = 0x1;
+    const uint MOUSEEVENTF_MOVE = 0x1, MOUSEEVENTF_VIRTUALDESK = 0x4000, MOUSEEVENTF_ABSOLUTE = 0x8000;
+    const byte VK_F15 = 0x7E; // a key no keyboard has; apps ignore it but it counts as activity
+    const uint KEYEVENTF_KEYUP = 0x2;
+    int dir = 1;
 
     Timer timer = new Timer();
     Button toggle = new Button();
@@ -83,10 +88,23 @@ class Jiggler : Form
         uint idleMs = (uint)Environment.TickCount - info.dwTime;
         if (idleMs < (uint)seconds.Value * 1000) return;
 
-        // Move 1px right, then 1px back. Invisible in practice.
-        var size = Marshal.SizeOf(typeof(INPUT));
-        SendInput(1, new[] { new INPUT { mi = new MOUSEINPUT { dx = 1, dwFlags = MOUSEEVENTF_MOVE } } }, size);
-        SendInput(1, new[] { new INPUT { mi = new MOUSEINPUT { dx = -1, dwFlags = MOUSEEVENTF_MOVE } } }, size);
+        // Really move the cursor 1px (alternating left/right so it never drifts).
+        // A tiny relative move can get swallowed by pointer acceleration or
+        // high-DPI screens (Surface), so move to an exact spot instead.
+        var screen = SystemInformation.VirtualScreen;
+        var pos = Cursor.Position;
+        int x = Math.Min(Math.Max(pos.X + dir, screen.Left), screen.Right - 1);
+        dir = -dir;
+        var move = new MOUSEINPUT {
+            dx = (int)((x - screen.Left) * 65535L / Math.Max(1, screen.Width - 1)),
+            dy = (int)((pos.Y - screen.Top) * 65535L / Math.Max(1, screen.Height - 1)),
+            dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK
+        };
+        SendInput(1, new[] { new INPUT { mi = move } }, Marshal.SizeOf(typeof(INPUT)));
+
+        // Also tap F15. Teams, Slack and screen-lock timers all see this as you being active.
+        keybd_event(VK_F15, 0, 0, UIntPtr.Zero);
+        keybd_event(VK_F15, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
         jiggles++;
         status.Text = "Running. Jiggles so far: " + jiggles;
     }
@@ -94,6 +112,7 @@ class Jiggler : Form
     [STAThread]
     static void Main()
     {
+        SetProcessDPIAware(); // use real pixels on scaled screens
         Application.EnableVisualStyles();
         Application.Run(new Jiggler());
     }
