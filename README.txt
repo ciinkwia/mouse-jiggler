@@ -5,7 +5,7 @@ Keeps your PC awake and your status "active".
 HOW TO USE
 1. Double-click MouseJiggler.exe. It starts ON.
 2. If you stop touching the mouse/keyboard for 30 seconds (you can change this),
-   it nudges the mouse 1 pixel and back. You won't see it move.
+   it nudges the mouse a little left or right.
 3. It also stops the PC from sleeping or turning off the screen while ON.
 4. Click the big button to turn it off/on. Minimize it to hide it in the tray
    (bottom-right). Double-click the tray icon to bring it back.

@@ -26,7 +26,7 @@ class Jiggler : Form
     const uint MOUSEEVENTF_MOVE = 0x1, MOUSEEVENTF_VIRTUALDESK = 0x4000, MOUSEEVENTF_ABSOLUTE = 0x8000;
     const byte VK_F15 = 0x7E; // a key no keyboard has; apps ignore it but it counts as activity
     const uint KEYEVENTF_KEYUP = 0x2;
-    int dir = 1;
+    int dir = 10; // pixels; big enough to see
 
     Timer timer = new Timer();
     Button toggle = new Button();
@@ -88,7 +88,7 @@ class Jiggler : Form
         uint idleMs = (uint)Environment.TickCount - info.dwTime;
         if (idleMs < (uint)seconds.Value * 1000) return;
 
-        // Really move the cursor 1px (alternating left/right so it never drifts).
+        // Really move the cursor 10px (alternating left/right so it never drifts).
         // A tiny relative move can get swallowed by pointer acceleration or
         // high-DPI screens (Surface), so move to an exact spot instead.
         var screen = SystemInformation.VirtualScreen;
