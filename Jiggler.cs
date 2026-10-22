@@ -33,7 +33,6 @@ class Jiggler : Form
     Button toggle = new Button();
     Label status = new Label();
     NumericUpDown minWait = new NumericUpDown(), maxWait = new NumericUpDown();
-    NotifyIcon tray = new NotifyIcon();
     Random rng = new Random();
     volatile bool moving;
     int nextWaitMs, moves;
@@ -67,12 +66,8 @@ class Jiggler : Form
 
         Controls.AddRange(new Control[] { lbl, minWait, to, maxWait, sec, toggle, status });
 
-        // Minimize to the tray so it stays out of the way.
-        tray.Icon = SystemIcons.Application;
-        tray.Text = "Mouse Jiggler";
-        tray.DoubleClick += (s, e) => { Show(); WindowState = FormWindowState.Normal; tray.Visible = false; };
-        Resize += (s, e) => { if (WindowState == FormWindowState.Minimized) { Hide(); tray.Visible = true; } };
-        FormClosing += (s, e) => { tray.Visible = false; SetThreadExecutionState(ES_CONTINUOUS); };
+        // Minimizing keeps it on the taskbar so it's always easy to find and close.
+        FormClosing += (s, e) => SetThreadExecutionState(ES_CONTINUOUS);
 
         timer.Interval = 500;
         timer.Tick += (s, e) => Tick();
@@ -204,8 +199,17 @@ class Jiggler : Form
     [STAThread]
     static void Main()
     {
+        // Only one copy at a time, so there's never a hidden second one running.
+        bool first;
+        var mutex = new Mutex(true, "MouseJiggler-ciinkwia", out first);
+        if (!first)
+        {
+            MessageBox.Show("Mouse Jiggler is already running. Look for it on your taskbar.", "Mouse Jiggler");
+            return;
+        }
         SetProcessDPIAware(); // use real pixels on scaled screens
         Application.EnableVisualStyles();
         Application.Run(new Jiggler());
+        GC.KeepAlive(mutex);
     }
 }
